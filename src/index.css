@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+:root { font-family: "Noto Sans Thai", "IBM Plex Sans Thai", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #17223b; background: #f6f8f4; --ink: #17223b; --muted: #667085; --line: #e1e9dd; --navy: #1f5fa5; --blue: #378add; --green: #639922; --lime: #97c459; font-synthesis: none; text-rendering: optimizeLegibility; }
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; min-width: 320px; background: radial-gradient(circle at 6% 0%, rgba(55,138,221,.12), transparent 24rem), radial-gradient(circle at 95% 14%, rgba(151,196,89,.13), transparent 27rem), #f8faf6; line-height: 1.5; }
+button, a { -webkit-tap-highlight-color: transparent; transition: color .2s ease, background-color .2s ease, border-color .2s ease, transform .25s ease, box-shadow .25s ease; }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid rgba(55,138,221,.3); outline-offset: 3px; }
+main { color: var(--ink); } input::placeholder { color: #a1adbb; }
+main h1, main h2, main h3 { text-wrap: balance; }
+main p { text-wrap: pretty; }
+main input, main select, main textarea { min-height: 2.9rem; font-size: 1rem; border-radius: .8rem; }
+
+/* Ambient grid and a soft aurora make the landing area feel less like a form. */
+.hero-grid { isolation: isolate; background-color: #f8fbf6; background-image: radial-gradient(circle at 78% 32%, rgba(151,196,89,.23), transparent 15rem), linear-gradient(rgba(55,138,221,.055) 1px, transparent 1px), linear-gradient(90deg, rgba(55,138,221,.055) 1px, transparent 1px); background-size: auto, 34px 34px, 34px 34px; }
+.hero-grid::before, .hero-grid::after { content: ""; position: absolute; z-index: -1; border-radius: 999px; filter: blur(1px); pointer-events: none; }
+.hero-grid::before { width: 22rem; height: 22rem; right: -10rem; top: -9rem; background: rgba(55,138,221,.13); }
+.hero-grid::after { width: 10rem; height: 10rem; left: 42%; bottom: -5rem; background: rgba(151,196,89,.18); }
+.gradient-text { background: linear-gradient(105deg, #1f5fa5 0%, #378add 45%, #639922 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.gradient-bg { background: linear-gradient(125deg, #1f5fa5 0%, #378add 52%, #639922 100%); }
+.soft-gradient { background: linear-gradient(135deg, rgba(55,138,221,.13), rgba(151,196,89,.12) 55%, rgba(99,153,34,.15)); }
+.glass { background: rgba(255,255,255,.78); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+.surface-shadow { box-shadow: 0 24px 70px rgba(39,71,122,.15), 0 3px 12px rgba(39,71,122,.07); }
+.section-kicker { letter-spacing: .16em; font-size: .7rem; font-weight: 800; color: var(--green); }
+::selection { color: #fff; background: #378add; }
+
+/* Shared cards: a quiet border, generous shadow, and a definite hover response. */
+.card-hover { transition: transform .3s cubic-bezier(.2,.8,.2,1), box-shadow .3s ease, border-color .3s ease; box-shadow: 0 5px 16px rgba(34,56,92,.04); }
+.card-hover:hover { transform: translateY(-7px); box-shadow: 0 20px 42px rgba(31,95,165,.13); border-color: rgba(55,138,221,.28); }
+header { background: rgba(255,255,255,.84) !important; backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+header nav button { position: relative; } header nav button:hover { background: rgba(55,138,221,.055); }
+header nav button[class*="border-[#5E9C2A]"] { border-color: #639922 !important; color: #1f5fa5 !important; }
+button[class*="from-[#4A90D9]"] { background-image: linear-gradient(105deg, #1f5fa5, #378add 56%, #639922) !important; }
+button[class*="shadow-blue"] { box-shadow: 0 10px 22px rgba(55,138,221,.2) !important; }
+button[class*="rounded-lg"] { border-radius: .85rem; }
+
+/* Map legacy utility classes to the four-color myUCUE logo palette. */
+[class*="text-[#1F5C99]"] { color: #1f5fa5 !important; }
+[class*="text-[#4A90D9]"] { color: #378add !important; }
+[class*="text-[#5E9C2A]"] { color: #639922 !important; }
+[class~="bg-[#4A90D9]"] { background-color: #378add !important; }
+[class~="bg-[#5E9C2A]"] { background-color: #639922 !important; }
+[class~="bg-[#9ACD5C]"] { background-color: #97c459 !important; }
+[class*="bg-[#4A90D9]/10"] { background-color: rgba(55,138,221,.10) !important; }
+[class*="bg-[#4A90D9]/5"] { background-color: rgba(55,138,221,.05) !important; }
+[class*="bg-[#5E9C2A]/20"] { background-color: rgba(99,153,34,.20) !important; }
+[class*="bg-[#9ACD5C]/10"] { background-color: rgba(151,196,89,.10) !important; }
+[class*="bg-[#9ACD5C]/15"] { background-color: rgba(151,196,89,.15) !important; }
+[class*="border-[#4A90D9]"] { border-color: #378add !important; }
+[class*="border-[#5E9C2A]"] { border-color: #639922 !important; }
+[class*="ring-[#4A90D9]"] { --tw-ring-color: rgba(55,138,221,.18) !important; }
+[class*="from-[#4A90D9]"] { --tw-gradient-from: #378add var(--tw-gradient-from-position) !important; }
+[class*="to-[#5E9C2A]"], [class*="to-[#9ACD5C]"] { --tw-gradient-to: #639922 var(--tw-gradient-to-position) !important; }
+
+/* Explicit interaction styles keep critical actions visible regardless of utility-class color changes. */
+.assessment-progress { background: linear-gradient(90deg, #378add 0%, #639922 100%); box-shadow: 0 0 12px rgba(55,138,221,.28); }
+.match-progress { min-width: .45rem; background: linear-gradient(90deg, #378add 0%, #639922 100%); box-shadow: 0 1px 5px rgba(55,138,221,.22); }
+.university-detail-action { color: #1f5fa5; background: rgba(55,138,221,.12); }
+.university-detail-action:hover { color: #fff; background: #1f5fa5; }
+.university-website-action { color: #fff; background: #639922; }
+.university-website-action:hover { background: #4e7b1b; }
+.university-website-primary { background: linear-gradient(105deg, #1f5fa5 0%, #378add 54%, #639922 100%); box-shadow: 0 10px 22px rgba(31,95,165,.18); }
+.university-website-primary:hover { filter: brightness(1.06); transform: translateY(-1px); }
+
+/* Typography and spacing baseline used by every screen. */
+@media (max-width: 640px) {
+  main > div:not(.fixed) { padding-left: 1.25rem; padding-right: 1.25rem; }
+  main h1 { line-height: 1.22; }
+  main h2 { line-height: 1.28; }
+}
+
+.page-enter { animation: pageEnter .42s cubic-bezier(.2,.7,.2,1) both; }
+.page-enter .card-hover { animation: cardEnter .5s cubic-bezier(.2,.7,.2,1) both; }
+.page-enter .card-hover:nth-child(2) { animation-delay: .06s; }.page-enter .card-hover:nth-child(3) { animation-delay: .12s; }.page-enter .card-hover:nth-child(4) { animation-delay: .18s; }.page-enter .card-hover:nth-child(5) { animation-delay: .24s; }
+.page-enter img { transition: transform .7s cubic-bezier(.2,.7,.2,1), filter .35s ease; }.page-enter .card-hover:hover img { transform: scale(1.05); filter: saturate(1.08); }.page-enter button, .page-enter a { transition: color .2s ease, background-color .2s ease, border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
+@keyframes floatIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }.animate-in { animation: floatIn .5s cubic-bezier(.2,.7,.2,1) both; }
+@keyframes pageEnter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } } @keyframes cardEnter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 640px) { .hero-grid::before { width: 16rem; height: 16rem; right: -8rem; top: -7rem; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
