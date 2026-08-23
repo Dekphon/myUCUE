@@ -366,7 +366,7 @@ function ResultsPage({ results, setPage, onDetail, compareIds, toggleCompare, re
                 <div className="mt-2 h-2.5 rounded-full bg-slate-100">
                   <div className="match-progress h-full rounded-full" style={{width:`${f.match}%`}}/>
                 </div>
-                <p className="mt-2 line-clamp-1 text-[13px] font-medium text-slate-500">{f.description}</p>
+                <p className="mt-2 line-clamp-2 text-[13px] font-medium leading-5 text-slate-500"><span className="font-extrabold text-[#1f5fa5]">เหมาะเพราะ: </span>{f.whyFit || f.description}</p>
               </div>
               <div className="flex gap-2">
                 <button onClick={() => onDetail(f)} className="rounded-xl border border-slate-200 px-3.5 py-2.5 text-[13px] font-bold hover:border-[#4A90D9]/40 hover:text-[#1F5C99]">รายละเอียด</button>

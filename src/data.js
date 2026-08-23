@@ -685,20 +685,40 @@ export function calculateResults(answers) {
     });
   });
 
-  const maxByDimension = Object.keys(totals).reduce((acc, key) => acc + totals[key], 0) || 1;
+  const hasAnswers = Object.keys(totals).length > 0;
+  const dimensionLabels = {
+    math: "การคิดวิเคราะห์และตัวเลข",
+    science: "วิทยาศาสตร์และการค้นคว้า",
+    technology: "เทคโนโลยีและการสร้างระบบ",
+    creative: "ความคิดสร้างสรรค์",
+    solo: "การทำงานเชิงลึกด้วยตัวเอง",
+    group: "การทำงานกับผู้คนและทีม",
+    business: "การวางแผนและมุมมองธุรกิจ"
+  };
 
-  return faculties
+  const ranked = faculties
     .map((faculty) => {
       const dimensions = Object.entries(faculty.tags);
-      const raw = dimensions.reduce((sum, [dimension, weight]) => {
-        return sum + (totals[dimension] || 0) * weight;
-      }, 0);
+      const contributions = dimensions
+        .map(([dimension, weight]) => ({ dimension, value: (totals[dimension] || 0) * weight }))
+        .filter(({ value }) => value > 0)
+        .sort((a, b) => b.value - a.value);
+      const raw = contributions.reduce((sum, { value }) => sum + value, 0);
+      const strongest = contributions.slice(0, 2).map(({ dimension }) => dimensionLabels[dimension]);
+      const whyFit = strongest.length
+        ? `คำตอบของคุณสะท้อนจุดเด่นด้าน${strongest.join(" และ ")} ซึ่งสอดคล้องกับสายนี้`
+        : "ทำแบบประเมินให้ครบเพื่อดูเหตุผลที่ระบบจับคู่ให้คุณ";
+      return { ...faculty, raw, whyFit };
+    });
 
-      // Blend a normalized weighted score with a small baseline so every
-      // faculty remains discoverable instead of collapsing to 0%.
-      const normalized = raw / (maxByDimension * 1.7);
-      const percentage = Math.max(55, Math.min(98, Math.round(58 + normalized * 40)));
-      return { ...faculty, match: percentage };
+  const highestRaw = Math.max(...ranked.map(({ raw }) => raw), 0);
+  return ranked
+    .map(({ raw, ...faculty }) => {
+      // Show a meaningful spread: only the strongest match approaches 100%,
+      // while weaker matches fall away quickly instead of all sitting above 60%.
+      const relativeFit = highestRaw > 0 ? raw / highestRaw : 0;
+      const match = hasAnswers ? Math.round(Math.min(96, 5 + 91 * (relativeFit ** 2))) : 0;
+      return { ...faculty, match };
     })
     .sort((a, b) => b.match - a.match);
 }
