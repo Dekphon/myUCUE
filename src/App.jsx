@@ -634,7 +634,7 @@ function Footer({setPage}) {
         </div>
         <div>
           <p className="font-extrabold">ติดต่อ</p>
-          <p className="mt-3 text-sm leading-7 text-slate-500">hello@myucue.com<br/>myucue.com</p>
+          <p className="mt-3 text-sm leading-7 text-slate-500">theeraphon.main@gmail.com<br/>082-092-4641</p>
         </div>
       </div>
       <div className="border-t border-slate-100 py-5 text-center text-xs text-slate-400">© 2026 myUCUE. Built to help you find your edge.</div>
