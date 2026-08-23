@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft, ArrowRight, BarChart3, BookOpen, BriefcaseBusiness,
   Check, ChevronRight, CircleHelp, GraduationCap, Heart, Home,
   ExternalLink, Lightbulb, LogIn, LogOut, Menu, RotateCcw, Settings, Sparkles, Target, UserRound, Users, X
 } from "lucide-react";
 import { defaultUniversities, faculties, questions, universities, calculateResults, getPersonalityProfile } from "./data";
+import { supabase, toAppUser } from "./supabase";
 
 const navItems = [
   ["home", "หน้าแรก"],
@@ -27,32 +28,41 @@ function AuthModal({ onClose, onLogin }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const submit = (event) => {
+  const submit = async (event) => {
     event.preventDefault();
-    setError(""); // Clear any previous error messages
-    const users = JSON.parse(localStorage.getItem("myucue-users") || "[]");
+    setError("");
+    setMessage("");
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail || password.length < 6 || (mode === "signup" && !name.trim())) {
       setError(mode === "signup" ? "กรุณากรอกชื่อ อีเมล และรหัสผ่านอย่างน้อย 6 ตัวอักษร" : "กรุณากรอกอีเมลและรหัสผ่านให้ครบ");
       return;
     }
-    if (mode === "signup") {
-      if (users.some((account) => account.email === normalizedEmail)) {
-        setError("อีเมลนี้มีบัญชีอยู่แล้ว กรุณาเข้าสู่ระบบ");
-        return;
+    if (!supabase) return setError("ระบบสมาชิกกำลังตั้งค่า กรุณาลองใหม่อีกครั้งในภายหลัง");
+    setLoading(true);
+    try {
+      if (mode === "signup") {
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email: normalizedEmail,
+          password,
+          options: { data: { display_name: name.trim() } }
+        });
+        if (signUpError) throw signUpError;
+        if (!data.session) {
+          setMessage("สมัครสำเร็จแล้ว กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ");
+        } else {
+          onLogin(toAppUser(data.user));
+        }
+      } else {
+        const { data, error: signInError } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
+        if (signInError) throw signInError;
+        onLogin(toAppUser(data.user));
       }
-      const account = { id: crypto.randomUUID(), name: name.trim(), email: normalizedEmail };
-      localStorage.setItem("myucue-users", JSON.stringify([...users, { ...account, password } ]));
-      onLogin(account);
-      return;
-    }
-    const account = users.find((item) => item.email === normalizedEmail && item.password === password);
-    if (!account) {
-      setError("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
-      return;
-    }
-    onLogin({ id: account.id, name: account.name, email: account.email });
+    } catch (authError) {
+      setError(authError.message || "ไม่สามารถเข้าสู่ระบบได้");
+    } finally { setLoading(false); }
   };
 
   return (
@@ -62,15 +72,16 @@ function AuthModal({ onClose, onLogin }) {
           <div><p className="text-xs font-extrabold tracking-[.18em] text-[#5E9C2A]">MYUCUE ACCOUNT</p><h2 className="mt-2 text-2xl font-extrabold">{mode === "signup" ? "สร้างบัญชี myUCUE" : "เข้าสู่ระบบ myUCUE"}</h2></div>
           <button onClick={onClose} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100" aria-label="ปิด"><X size={18}/></button>
         </div>
-        <p className="mt-3 text-sm leading-7 text-slate-500">บันทึกบัญชีและผลแบบประเมินไว้ใน browser เครื่องนี้</p>
+        <p className="mt-3 text-sm leading-7 text-slate-500">บัญชีและผลแบบประเมินจะบันทึกอย่างปลอดภัยในระบบ myUCUE</p>
         <form onSubmit={submit} className="mt-6 grid gap-3">
           {mode === "signup" && <input value={name} onChange={(event) => setName(event.target.value)} placeholder="ชื่อที่แสดง" className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#4A90D9]" />}
           <input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="อีเมล" type="email" autoComplete="email" className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#4A90D9]" />
           <input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="รหัสผ่านอย่างน้อย 6 ตัวอักษร" type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#4A90D9]" />
-          <button type="submit" className="mt-2 rounded-xl bg-gradient-to-r from-[#4A90D9] to-[#5E9C2A] py-3 text-sm font-bold text-white">{mode === "signup" ? "สมัครสมาชิก" : "เข้าสู่ระบบ"}</button>
+          <button type="submit" disabled={loading} className="mt-2 rounded-xl bg-gradient-to-r from-[#4A90D9] to-[#5E9C2A] py-3 text-sm font-bold text-white disabled:opacity-50">{loading ? "กำลังดำเนินการ..." : mode === "signup" ? "สมัครสมาชิก" : "เข้าสู่ระบบ"}</button>
         </form>
         {error && <p className="mt-4 rounded-xl bg-red-50 p-3 text-center text-xs font-semibold leading-5 text-red-600">{error}</p>}
-        <button onClick={() => { setMode(mode === "signup" ? "login" : "signup"); setError(""); }} className="mt-5 w-full text-center text-xs font-bold text-[#1F5C99]">{mode === "signup" ? "มีบัญชีแล้ว? เข้าสู่ระบบ" : "ยังไม่มีบัญชี? สมัครสมาชิก"}</button>
+        {message && <p className="mt-4 rounded-xl bg-green-50 p-3 text-center text-xs font-semibold leading-5 text-green-700">{message}</p>}
+        <button onClick={() => { setMode(mode === "signup" ? "login" : "signup"); setError(""); setMessage(""); }} className="mt-5 w-full text-center text-xs font-bold text-[#1F5C99]">{mode === "signup" ? "มีบัญชีแล้ว? เข้าสู่ระบบ" : "ยังไม่มีบัญชี? สมัครสมาชิก"}</button>
       </div>
     </div>
   );
@@ -528,8 +539,6 @@ function AvatarUpload({ user, onSave }) {
     const reader = new FileReader();
     reader.onload = () => {
       const avatar = String(reader.result);
-      const users = JSON.parse(localStorage.getItem("myucue-users") || "[]");
-      localStorage.setItem("myucue-users", JSON.stringify(users.map((account) => account.id === user.id ? { ...account, avatar } : account)));
       onSave({ ...user, avatar });
     };
     reader.readAsDataURL(file);
@@ -573,7 +582,6 @@ function AccountSettingsPage({ user, setPage, onSave }) {
   const [email, setEmail] = useState(user.email || "");
   const [avatar, setAvatar] = useState(user.avatar || "");
   const [avatarFile, setAvatarFile] = useState("");
-  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -592,31 +600,53 @@ function AccountSettingsPage({ user, setPage, onSave }) {
     reader.readAsDataURL(file);
   };
 
-  const save = (event) => {
+  const save = async (event) => {
     event.preventDefault();
     setError("");
     setMessage("");
-    const users = JSON.parse(localStorage.getItem("myucue-users") || "[]");
-    const account = users.find((item) => item.id === user.id);
     const nextEmail = email.trim().toLowerCase();
     if (!name.trim() || !nextEmail) return setError("กรุณากรอกชื่อและอีเมลให้ครบ");
-    if (users.some((item) => item.id !== user.id && item.email === nextEmail)) return setError("อีเมลนี้ถูกใช้แล้ว");
-    if (newPassword && (currentPassword !== account?.password || newPassword.length < 6)) return setError("รหัสผ่านเดิมไม่ถูกต้อง หรือรหัสผ่านใหม่สั้นกว่า 6 ตัวอักษร");
+    if (!supabase) return setError("ระบบสมาชิกกำลังตั้งค่า กรุณาลองใหม่อีกครั้ง");
+    if (newPassword && newPassword.length < 6) return setError("รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร");
     if (newPassword && newPassword !== confirmPassword) return setError("รหัสผ่านใหม่ไม่ตรงกัน");
-    const updated = { ...account, name: name.trim(), email: nextEmail, avatar: avatarFile || avatar.trim() };
-    if (newPassword) updated.password = newPassword;
-    localStorage.setItem("myucue-users", JSON.stringify(users.map((item) => item.id === user.id ? updated : item)));
-    onSave({ id: updated.id, name: updated.name, email: updated.email, avatar: updated.avatar });
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    setMessage("บันทึกการตั้งค่าแล้ว");
+    const nextAvatar = avatarFile || avatar.trim();
+    const { data, error: updateError } = await supabase.auth.updateUser({
+      email: nextEmail,
+      password: newPassword || undefined,
+      data: { display_name: name.trim(), avatar_url: nextAvatar }
+    });
+    if (updateError) return setError(updateError.message);
+    const { error: profileError } = await supabase.from("profiles").upsert({ id: user.id, display_name: name.trim(), avatar_url: nextAvatar, updated_at: new Date().toISOString() });
+    if (profileError) return setError(profileError.message);
+    onSave(toAppUser(data.user));
+    setNewPassword(""); setConfirmPassword("");
+    setMessage(nextEmail !== user.email ? "บันทึกแล้ว กรุณายืนยันอีเมลใหม่จากกล่องจดหมาย" : "บันทึกการตั้งค่าแล้ว");
   };
 
-  return <div className="mx-auto max-w-3xl px-5 py-10 md:py-16"><button onClick={() => setPage("profile")} className="mb-6 flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-[#1F5C99]"><ArrowLeft size={16}/> กลับไปโปรไฟล์</button><div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm md:p-9"><div><p className="text-xs font-extrabold tracking-[.18em] text-[#5E9C2A]">ACCOUNT SETTINGS</p><h1 className="mt-2 text-3xl font-extrabold">ตั้งค่าบัญชี</h1><p className="mt-3 text-sm leading-7 text-slate-500">แก้ไขข้อมูลที่ใช้แสดงในโปรไฟล์และจัดการรหัสผ่านของคุณ</p></div><form onSubmit={save} className="mt-8 grid gap-8"><section><h2 className="text-lg font-extrabold">ข้อมูลส่วนตัว</h2><div className="mt-4 grid gap-4"><label className="grid gap-2 text-sm font-bold text-slate-700">ชื่อที่แสดง<input value={name} onChange={(event) => setName(event.target.value)} className="border border-slate-200 px-4 py-3 font-normal outline-none focus:border-[#4A90D9]" /></label><label className="grid gap-2 text-sm font-bold text-slate-700">อีเมล<input value={email} onChange={(event) => setEmail(event.target.value)} type="email" className="border border-slate-200 px-4 py-3 font-normal outline-none focus:border-[#4A90D9]" /></label><label className="grid gap-2 text-sm font-bold text-slate-700">ลิงก์รูปโปรไฟล์<span className="text-xs font-normal text-slate-400">ใส่ URL รูปภาพที่ต้องการใช้ หรือเว้นว่างเพื่อใช้ตัวอักษรแทน</span><input value={avatar} onChange={(event) => setAvatar(event.target.value)} type="url" placeholder="https://..." className="border border-slate-200 px-4 py-3 font-normal outline-none focus:border-[#4A90D9]" /></label></div></section><section className="border-t border-slate-100 pt-7"><h2 className="text-lg font-extrabold">เปลี่ยนรหัสผ่าน</h2><p className="mt-2 text-xs leading-6 text-slate-500">เว้นว่างไว้หากยังไม่ต้องการเปลี่ยนรหัสผ่าน</p><div className="mt-4 grid gap-4"><input value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} type="password" placeholder="รหัสผ่านเดิม" autoComplete="current-password" className="border border-slate-200 px-4 py-3 outline-none focus:border-[#4A90D9]" /><input value={newPassword} onChange={(event) => setNewPassword(event.target.value)} type="password" placeholder="รหัสผ่านใหม่อย่างน้อย 6 ตัวอักษร" autoComplete="new-password" className="border border-slate-200 px-4 py-3 outline-none focus:border-[#4A90D9]" /><input value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} type="password" placeholder="ยืนยันรหัสผ่านใหม่" autoComplete="new-password" className="border border-slate-200 px-4 py-3 outline-none focus:border-[#4A90D9]" /></div></section>{error && <p className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-600">{error}</p>}{message && <p className="rounded-xl bg-green-50 p-3 text-sm font-semibold text-green-700">{message}</p>}<div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button type="button" onClick={() => setPage("profile")} className="rounded-xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50">ยกเลิก</button><Button type="submit">บันทึกการตั้งค่า <Check size={16}/></Button></div></form></div></div>;
+  return <div className="mx-auto max-w-3xl px-5 py-10 md:py-16"><button onClick={() => setPage("profile")} className="mb-6 flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-[#1F5C99]"><ArrowLeft size={16}/> กลับไปโปรไฟล์</button><div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm md:p-9"><div><p className="text-xs font-extrabold tracking-[.18em] text-[#5E9C2A]">ACCOUNT SETTINGS</p><h1 className="mt-2 text-3xl font-extrabold">ตั้งค่าบัญชี</h1><p className="mt-3 text-sm leading-7 text-slate-500">แก้ไขข้อมูลที่ใช้แสดง อีเมล และรหัสผ่านของคุณ</p></div><form onSubmit={save} className="mt-8 grid gap-8"><section><h2 className="text-lg font-extrabold">ข้อมูลส่วนตัว</h2><div className="mt-4 grid gap-4"><label className="grid gap-2 text-sm font-bold text-slate-700">ชื่อที่แสดง<input value={name} onChange={(event) => setName(event.target.value)} className="border border-slate-200 px-4 py-3 font-normal outline-none focus:border-[#4A90D9]" /></label><label className="grid gap-2 text-sm font-bold text-slate-700">อีเมล<input value={email} onChange={(event) => setEmail(event.target.value)} type="email" className="border border-slate-200 px-4 py-3 font-normal outline-none focus:border-[#4A90D9]" /></label><label className="grid gap-2 text-sm font-bold text-slate-700">ลิงก์รูปโปรไฟล์<span className="text-xs font-normal text-slate-400">ใส่ URL รูปภาพที่ต้องการใช้ หรือเว้นว่างเพื่อใช้ตัวอักษรแทน</span><input value={avatar} onChange={(event) => setAvatar(event.target.value)} type="url" placeholder="https://..." className="border border-slate-200 px-4 py-3 font-normal outline-none focus:border-[#4A90D9]" /></label></div></section><section className="border-t border-slate-100 pt-7"><h2 className="text-lg font-extrabold">เปลี่ยนรหัสผ่าน</h2><p className="mt-2 text-xs leading-6 text-slate-500">เว้นว่างไว้หากยังไม่ต้องการเปลี่ยนรหัสผ่าน</p><div className="mt-4 grid gap-4"><input value={newPassword} onChange={(event) => setNewPassword(event.target.value)} type="password" placeholder="รหัสผ่านใหม่อย่างน้อย 6 ตัวอักษร" autoComplete="new-password" className="border border-slate-200 px-4 py-3 outline-none focus:border-[#4A90D9]" /><input value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} type="password" placeholder="ยืนยันรหัสผ่านใหม่" autoComplete="new-password" className="border border-slate-200 px-4 py-3 outline-none focus:border-[#4A90D9]" /></div></section>{error && <p className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-600">{error}</p>}{message && <p className="rounded-xl bg-green-50 p-3 text-sm font-semibold text-green-700">{message}</p>}<div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button type="button" onClick={() => setPage("profile")} className="rounded-xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50">ยกเลิก</button><Button type="submit">บันทึกการตั้งค่า <Check size={16}/></Button></div></form></div></div>;
 }
 
-function Footer({setPage}) {
+function FeedbackForm({ user, onLogin }) {
+  const [message, setMessage] = useState("");
+  const [status, setStatus] = useState("");
+  const [loading, setLoading] = useState(false);
+  const submit = async (event) => {
+    event.preventDefault();
+    if (!user) return onLogin();
+    if (message.trim().length < 3) return setStatus("กรุณาเขียนความคิดเห็นอย่างน้อย 3 ตัวอักษร");
+    if (!supabase) return setStatus("ระบบ Feedback กำลังตั้งค่า กรุณาลองใหม่อีกครั้ง");
+    setLoading(true); setStatus("");
+    const payload = { user_id: user.id, name: user.name, email: user.email, message: message.trim() };
+    const { error } = await supabase.from("feedback").insert(payload);
+    if (error) { setStatus(error.message); setLoading(false); return; }
+    // Sending email is optional until RESEND_API_KEY is configured on Vercel.
+    fetch("/api/feedback-email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).catch(() => {});
+    setMessage(""); setStatus("ส่งความคิดเห็นแล้ว ขอบคุณที่ช่วยพัฒนา myUCUE ครับ"); setLoading(false);
+  };
+  return <form onSubmit={submit} className="mt-4 space-y-2"><label className="text-xs font-bold text-slate-600">Feedback</label><textarea value={message} onChange={(event) => setMessage(event.target.value)} rows="3" maxLength="2000" placeholder={user ? "บอกสิ่งที่อยากให้ myUCUE ปรับปรุง" : "เข้าสู่ระบบเพื่อส่ง Feedback"} className="w-full resize-none rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-[#378add]" /><button type="submit" disabled={loading} className="w-full rounded-xl bg-[#1f5fa5] px-3 py-2.5 text-sm font-bold text-white disabled:opacity-50">{loading ? "กำลังส่ง..." : user ? "ส่ง Feedback" : "เข้าสู่ระบบเพื่อส่ง Feedback"}</button>{status && <p className="text-xs leading-5 text-slate-500">{status}</p>}</form>;
+}
+
+function Footer({setPage, user, onLogin}) {
   return (
     <footer className="border-t border-slate-200 bg-white">
       <div className="mx-auto grid max-w-6xl gap-8 px-5 py-12 md:grid-cols-[1.5fr_1fr_1fr]">
@@ -635,6 +665,7 @@ function Footer({setPage}) {
         <div>
           <p className="font-extrabold">ติดต่อ</p>
           <p className="mt-3 text-sm leading-7 text-slate-500">theeraphon.main@gmail.com<br/>082-092-4641</p>
+          <FeedbackForm user={user} onLogin={onLogin}/>
         </div>
       </div>
       <div className="border-t border-slate-100 py-5 text-center text-xs text-slate-400">© 2026 myUCUE. Built to help you find your edge.</div>
@@ -644,16 +675,21 @@ function Footer({setPage}) {
 
 export default function App() {
   const [page, setPage] = useState("home");
-  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem("myucue-user") || "null"));
-  const [savedProfile, setSavedProfile] = useState(() => {
-    const activeUser = JSON.parse(localStorage.getItem("myucue-user") || "null");
-    const stored = activeUser?.id && localStorage.getItem(`myucue-profile-${activeUser.id}`);
-    return stored ? JSON.parse(stored) : null;
-  });
-  const [results, setResults] = useState(() => savedProfile?.results || []);
+  const [user, setUser] = useState(null);
+  const [savedProfile, setSavedProfile] = useState(null);
+  const [results, setResults] = useState([]);
   const [detail, setDetail] = useState(null);
   const [compareIds, setCompareIds] = useState([]);
   const [authOpen, setAuthOpen] = useState(false);
+
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.auth.getSession().then(({ data: { session } }) => { if (session?.user) login(toAppUser(session.user), false); });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) login(toAppUser(session.user), false);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const navigate = (nextPage) => {
     if (nextPage !== "home" && !user) {
@@ -663,25 +699,23 @@ export default function App() {
     setPage(nextPage);
   };
 
-  const login = (profile) => {
+  const login = async (profile, goToProfile = true) => {
     setUser(profile);
-    localStorage.setItem("myucue-user", JSON.stringify(profile));
-    const stored = localStorage.getItem(`myucue-profile-${profile.id}`);
-    if (stored) {
-      const restored = JSON.parse(stored);
-      setSavedProfile(restored);
-      setResults(restored.results || []);
-    } else {
-      setSavedProfile(null);
-      setResults([]);
+    if (supabase) {
+      await supabase.from("profiles").upsert({ id: profile.id, display_name: profile.name, avatar_url: profile.avatar || null, updated_at: new Date().toISOString() });
+      const { data } = await supabase.from("assessments").select("answers, results, personality").eq("user_id", profile.id).maybeSingle();
+      if (data) {
+        setSavedProfile(data);
+        setResults(data.results || []);
+      } else { setSavedProfile(null); setResults([]); }
     }
     setAuthOpen(false);
-    setPage("profile");
+    if (goToProfile) setPage("profile");
   };
 
-  const logout = () => {
+  const logout = async () => {
+    if (supabase) await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem("myucue-user");
     setSavedProfile(null);
     setResults([]);
     setCompareIds([]);
@@ -690,7 +724,6 @@ export default function App() {
 
   const updateUser = (updatedUser) => {
     setUser(updatedUser);
-    localStorage.setItem("myucue-user", JSON.stringify(updatedUser));
     setPage("profile");
   };
 
@@ -705,7 +738,7 @@ export default function App() {
     setResults(nextResults);
     const profile = { answers, results: nextResults, personality: getPersonalityProfile(answers) };
     setSavedProfile(profile);
-    localStorage.setItem(`myucue-profile-${user.id}`, JSON.stringify(profile));
+    if (supabase) supabase.from("assessments").upsert({ user_id: user.id, ...profile, updated_at: new Date().toISOString() }).then(({ error }) => { if (error) console.error("Could not save assessment", error); });
     setPage("results");
     window.scrollTo({top:0,behavior:"smooth"});
   };
@@ -741,7 +774,7 @@ export default function App() {
     <div className="min-h-screen bg-transparent text-[#1A1A1A]">
       <Header page={page} setPage={navigate} user={user} onLogin={() => setAuthOpen(true)} onLogout={logout}/>
       <main key={page} className="page-enter">{content}</main>
-      {page !== "assessment" && <Footer setPage={navigate}/>} 
+      {page !== "assessment" && <Footer setPage={navigate} user={user} onLogin={() => setAuthOpen(true)}/>} 
       {authOpen && <AuthModal onClose={() => setAuthOpen(false)} onLogin={login}/>} 
     </div>
   );
